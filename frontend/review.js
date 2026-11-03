@@ -115,6 +115,7 @@ function renderAll(app) {
     renderPriorityIssues(app);
     renderOverallStatus(app);
     loadGenAI(app);
+    initSarvamSuite(app);
     if (reviewMessage) {
         reviewMessage.textContent =
             `Assessment ID: ${app.id || app.applicationId || "—"}`;
@@ -1190,3 +1191,465 @@ function addDetailRow(container, label, value) {
     }</span>`;
     container.append(row);
 }
+
+// ==============================================================================
+// SARVAM AI INDIAN MULTILINGUAL & VOICE SUITE INTEGRATION
+// ==============================================================================
+let mediaRecorder = null;
+let audioChunks = [];
+let recordInterval = null;
+let recordSeconds = 0;
+let recordedAudioBlob = null;
+let originalTextCache = new Map();
+let currentInterviewQuestion = "";
+
+async function initSarvamSuite(app) {
+    const suiteSection = document.getElementById("sarvamSuiteSection");
+    if (!suiteSection) return;
+
+    // 1. Fetch Sarvam API Status
+    try {
+        const statusRes = await fetch(`${API_BASE}/api/sarvam/status`).then(r => r.json()).catch(() => null);
+        const statusInd = document.getElementById("sarvamStatusIndicator");
+        if (statusInd && statusRes) {
+            if (statusRes.configured) {
+                statusInd.textContent = "● Sarvam AI Online (Mayura · Bulbul · Saaras · 105B)";
+                statusInd.style.color = "#16a34a";
+            } else {
+                statusInd.textContent = "ℹ️ Sarvam AI (Optional Key Pending in backend/.env)";
+                statusInd.style.color = "var(--text-muted)";
+            }
+        }
+    } catch (_) {}
+
+    // 2. Wire Multilingual Translation
+    const translateBtn = document.getElementById("sarvamTranslateBtn");
+    const langSelect = document.getElementById("sarvamLangSelect");
+    const resetLangBtn = document.getElementById("sarvamResetLangBtn");
+
+    if (translateBtn && langSelect) {
+        translateBtn.addEventListener("click", async () => {
+            const targetLang = langSelect.value;
+            if (targetLang === "en-IN") {
+                resetTranslation();
+                return;
+            }
+            await translateReviewPage(targetLang);
+        });
+
+        if (resetLangBtn) {
+            resetLangBtn.addEventListener("click", () => {
+                resetTranslation();
+                if (langSelect) langSelect.value = "en-IN";
+            });
+        }
+    }
+
+    // 3. Wire Audio Briefing (Bulbul TTS)
+    const voiceBtn = document.getElementById("sarvamVoiceBriefingBtn");
+    const voiceLangSelect = document.getElementById("sarvamVoiceLangSelect");
+    const audioBox = document.getElementById("sarvamAudioPlayerContainer");
+    const audioEl = document.getElementById("sarvamAudioElement");
+    const audioScript = document.getElementById("sarvamAudioScript");
+    const closeAudioBtn = document.getElementById("sarvamCloseAudioBtn");
+
+    if (voiceBtn) {
+        voiceBtn.addEventListener("click", async () => {
+            const originalBtnHtml = voiceBtn.innerHTML;
+            voiceBtn.disabled = true;
+            voiceBtn.innerHTML = `<span>⏳ Synthesizing Voice Briefing…</span>`;
+
+            try {
+                const alignment = app.internshipAnalysis ? app.internshipAnalysis.alignment_index : null;
+                const issues = [];
+                if (app.internshipAnalysis && app.internshipAnalysis.missing_required_skills) {
+                    issues.push(...app.internshipAnalysis.missing_required_skills.map(s => `Missing ${s}`));
+                }
+
+                const res = await apiFetch("/api/sarvam/briefing", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        opportunityName: app.opportunityName || "Your Opportunity",
+                        domain: app.domain || "internship",
+                        status: app.eligibilityResult ? app.eligibilityResult.status : "ready",
+                        alignmentIndex: alignment,
+                        keyIssues: issues,
+                        languageCode: voiceLangSelect ? voiceLangSelect.value : "en-IN",
+                    }),
+                }, 25000);
+
+                if (res.audioBase64 && audioEl && audioBox) {
+                    audioBox.style.display = "block";
+                    if (audioScript) {
+                        audioScript.textContent = `"${res.script}"`;
+                    }
+                    audioEl.src = `data:${res.contentType || "audio/wav"};base64,${res.audioBase64}`;
+                    audioEl.play().catch(() => {});
+                } else {
+                    alert(res.error || "Audio briefing unavailable. Verify SARVAM_API_KEY in backend/.env.");
+                }
+            } catch (err) {
+                alert(`Voice synthesis error: ${err.message}`);
+            } finally {
+                voiceBtn.disabled = false;
+                voiceBtn.innerHTML = originalBtnHtml;
+            }
+        });
+    }
+
+    if (closeAudioBtn && audioBox && audioEl) {
+        closeAudioBtn.addEventListener("click", () => {
+            audioEl.pause();
+            audioBox.style.display = "none";
+        });
+    }
+
+    // 4. Wire Sarvam AI Voice Interview Coach
+    initVoiceInterviewCoach(app);
+}
+
+/**
+ * Translates page text sections using Sarvam Mayura Translate API.
+ */
+async function translateReviewPage(targetLangCode) {
+    const translateBtn = document.getElementById("sarvamTranslateBtn");
+    const resetBtn = document.getElementById("sarvamResetLangBtn");
+    const statusInd = document.getElementById("sarvamStatusIndicator");
+
+    if (translateBtn) {
+        translateBtn.disabled = true;
+        translateBtn.textContent = "Translating…";
+    }
+
+    // Collect elements to translate
+    const elementsToTranslate = [];
+    const statusBarReason = document.getElementById("statusBarReason");
+    if (statusBarReason && statusBarReason.textContent.trim()) {
+        elementsToTranslate.push(statusBarReason);
+    }
+
+    const reviewReqs = document.getElementById("reviewRequirements");
+    if (reviewReqs && reviewReqs.textContent.trim() && reviewReqs.textContent !== "Not provided") {
+        elementsToTranslate.push(reviewReqs);
+    }
+
+    document.querySelectorAll("#issuesList p").forEach(el => elementsToTranslate.push(el));
+    document.querySelectorAll(".genai-rendered-body p").forEach(el => elementsToTranslate.push(el));
+    document.querySelectorAll(".cv-suggestion-bullet").forEach(el => elementsToTranslate.push(el));
+
+    let translatedCount = 0;
+
+    for (const el of elementsToTranslate) {
+        const text = el.textContent.trim();
+        if (!text || text.length < 2) continue;
+
+        // Cache original text once
+        if (!originalTextCache.has(el)) {
+            originalTextCache.set(el, text);
+        }
+
+        try {
+            const res = await apiFetch("/api/sarvam/translate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    input: text,
+                    targetLanguageCode: targetLangCode,
+                    sourceLanguageCode: "en-IN",
+                }),
+            }, 15000);
+
+            if (res.success && res.translatedText) {
+                el.textContent = res.translatedText;
+                translatedCount++;
+            }
+        } catch (_) {}
+    }
+
+    if (translateBtn) {
+        translateBtn.disabled = false;
+        translateBtn.textContent = "🌐 Translate Insights";
+    }
+    if (resetBtn) {
+        resetBtn.style.display = "inline-flex";
+    }
+    if (statusInd) {
+        statusInd.textContent = `✓ Insights translated into ${targetLangCode}`;
+    }
+}
+
+function resetTranslation() {
+    originalTextCache.forEach((orig, el) => {
+        el.textContent = orig;
+    });
+    const resetBtn = document.getElementById("sarvamResetLangBtn");
+    if (resetBtn) resetBtn.style.display = "none";
+    const statusInd = document.getElementById("sarvamStatusIndicator");
+    if (statusInd) statusInd.textContent = "Language reset to English.";
+}
+
+/**
+ * Initializes the Sarvam Voice Mock Interview Coach.
+ */
+function initVoiceInterviewCoach(app) {
+    const generateBtn = document.getElementById("sarvamGenerateQuestionBtn");
+    const questionText = document.getElementById("sarvamQuestionText");
+    const micBtn = document.getElementById("sarvamMicRecordBtn");
+    const micLabel = document.getElementById("sarvamMicLabel");
+    const timerEl = document.getElementById("sarvamRecordTimer");
+    const audioPreview = document.getElementById("sarvamRecordedAudioPreview");
+    const answerInput = document.getElementById("sarvamAnswerInput");
+    const submitBtn = document.getElementById("sarvamSubmitAnswerBtn");
+    const evalStatus = document.getElementById("sarvamEvalStatus");
+    const evalCard = document.getElementById("sarvamEvaluationResultCard");
+
+    // 1. Generate Question
+    if (generateBtn && questionText) {
+        generateBtn.addEventListener("click", async () => {
+            generateBtn.disabled = true;
+            generateBtn.textContent = "Formulating…";
+            questionText.textContent = "Synthesizing an interview question tailored to your evidence gaps…";
+
+            const missingSkills = (app.internshipAnalysis && app.internshipAnalysis.missing_required_skills) || [];
+            const alignment = app.internshipAnalysis ? app.internshipAnalysis.alignment_index : 0;
+
+            try {
+                const res = await apiFetch("/api/sarvam/interview/question", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        opportunityName: app.opportunityName || "Target Role",
+                        domain: app.domain || "internship",
+                        missingSkills,
+                        alignmentIndex: alignment,
+                        extractedEvidence: app.extractedFields || {},
+                    }),
+                });
+
+                if (res.question) {
+                    currentInterviewQuestion = res.question;
+                    questionText.textContent = res.question;
+                }
+            } catch (err) {
+                questionText.textContent = `Interview Question: How do you plan to bridge missing skills for ${app.opportunityName || "this opportunity"} based on your current projects?`;
+                currentInterviewQuestion = questionText.textContent;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = "⚡ Generate Role Question";
+            }
+        });
+    }
+
+    // 2. Microphone Recording & Saaras ASR
+    if (micBtn) {
+        micBtn.addEventListener("click", async () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                // STOP recording
+                mediaRecorder.stop();
+                micBtn.classList.remove("recording");
+                if (micLabel) micLabel.textContent = "🎙️ Record Voice Answer (Saaras ASR)";
+                clearInterval(recordInterval);
+                if (timerEl) timerEl.style.display = "none";
+            } else {
+                // START recording
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert("Microphone recording is not supported in this browser. You can type your answer in the box below.");
+                    return;
+                }
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        // Stop all tracks to release mic hardware
+                        stream.getTracks().forEach(t => t.stop());
+
+                        recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+                        if (audioPreview) {
+                            audioPreview.src = URL.createObjectURL(recordedAudioBlob);
+                            audioPreview.style.display = "block";
+                        }
+
+                        // Send audio to Sarvam Saaras Speech-to-Text
+                        if (evalStatus) evalStatus.textContent = "Transcribing voice with Sarvam Saaras v4…";
+                        try {
+                            const formData = new FormData();
+                            formData.append("audio", recordedAudioBlob, "answer.webm");
+                            formData.append("languageCode", "unknown");
+
+                            const token = typeof getAuthToken === "function" ? getAuthToken() : null;
+                            const headers = {};
+                            if (token) headers["Authorization"] = `Bearer ${token}`;
+
+                            const resp = await fetch(`${API_BASE}/api/sarvam/transcribe`, {
+                                method: "POST",
+                                headers,
+                                body: formData,
+                            });
+                            const data = await resp.json();
+
+                            if (data.success && data.transcript) {
+                                if (answerInput) answerInput.value = data.transcript;
+                                if (evalStatus) evalStatus.textContent = `✓ Transcribed via Sarvam Saaras (${data.languageCode || "detected"}). Review or edit before submitting.`;
+                            } else {
+                                if (evalStatus) evalStatus.textContent = data.error ? `ASR Note: ${data.error}` : "Voice captured. You can edit text before submitting.";
+                            }
+                        } catch (sttErr) {
+                            if (evalStatus) evalStatus.textContent = `ASR: Audio captured. (Optional key note: ${sttErr.message})`;
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    micBtn.classList.add("recording");
+                    if (micLabel) micLabel.textContent = "⏹️ Stop Recording";
+                    recordSeconds = 0;
+                    if (timerEl) {
+                        timerEl.style.display = "inline";
+                        timerEl.textContent = "00:00";
+                    }
+                    recordInterval = setInterval(() => {
+                        recordSeconds++;
+                        const m = String(Math.floor(recordSeconds / 60)).padStart(2, "0");
+                        const s = String(recordSeconds % 60).padStart(2, "0");
+                        if (timerEl) timerEl.textContent = `${m}:${s}`;
+                    }, 1000);
+                } catch (err) {
+                    alert(`Could not access microphone: ${err.message}. You can still type your answer directly.`);
+                }
+            }
+        });
+    }
+
+    // 3. Submit for Evaluation (Sarvam-105b)
+    if (submitBtn) {
+        submitBtn.addEventListener("click", async () => {
+            const answer = (answerInput ? answerInput.value : "").trim();
+            if (!answer) {
+                alert("Please speak or type your answer first.");
+                return;
+            }
+
+            const question = currentInterviewQuestion || (questionText ? questionText.textContent : "Technical Interview Question");
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Evaluating…";
+            if (evalStatus) evalStatus.textContent = "Sarvam-105b is evaluating your response…";
+
+            try {
+                const missingSkills = (app.internshipAnalysis && app.internshipAnalysis.missing_required_skills) || [];
+
+                const res = await apiFetch("/api/sarvam/interview/evaluate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        question,
+                        answerText: answer,
+                        opportunityName: app.opportunityName || "Target Role",
+                        targetRole: app.domain === "internship" ? "Internship Candidate" : "Scholarship Candidate",
+                        keySkills: missingSkills,
+                    }),
+                });
+
+                if (res.success && evalCard) {
+                    evalCard.style.display = "block";
+                    evalCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+                    const scorePill = document.getElementById("sarvamScorePill");
+                    if (scorePill) scorePill.textContent = `Score: ${res.score || 75}/100`;
+
+                    const feedbackBody = document.getElementById("sarvamFeedbackText");
+                    if (feedbackBody) feedbackBody.textContent = res.feedback || "Good response.";
+
+                    // Strengths
+                    const strList = document.getElementById("sarvamStrengthsList");
+                    if (strList) {
+                        strList.innerHTML = "";
+                        (res.strengths || ["Direct communication"]).forEach(s => {
+                            const li = document.createElement("li");
+                            li.textContent = s;
+                            strList.append(li);
+                        });
+                    }
+
+                    // Improvements
+                    const impList = document.getElementById("sarvamImprovementsList");
+                    if (impList) {
+                        impList.innerHTML = "";
+                        (res.areasForImprovement || ["Cite measurable project impact"]).forEach(a => {
+                            const li = document.createElement("li");
+                            li.textContent = a;
+                            impList.append(li);
+                        });
+                    }
+
+                    // Model Answer
+                    const modelBox = document.getElementById("sarvamModelAnswerBlock");
+                    const modelText = document.getElementById("sarvamModelAnswerText");
+                    if (modelBox && modelText) {
+                        if (res.modelAnswer) {
+                            modelBox.style.display = "block";
+                            modelText.textContent = res.modelAnswer;
+                        } else {
+                            modelBox.style.display = "none";
+                        }
+                    }
+
+                    // Transcription block display if voice was transcribed
+                    const transBlock = document.getElementById("sarvamTranscriptionBlock");
+                    const transText = document.getElementById("sarvamTranscribedText");
+                    if (transBlock && transText && recordedAudioBlob) {
+                        transBlock.style.display = "block";
+                        transText.textContent = `"${answer}"`;
+                    }
+
+                    if (evalStatus) evalStatus.textContent = "✓ Assessment complete.";
+
+                    // Wire feedback voice playback
+                    const listenFeedbackBtn = document.getElementById("sarvamListenFeedbackBtn");
+                    const feedbackAudio = document.getElementById("sarvamFeedbackAudio");
+                    if (listenFeedbackBtn && feedbackAudio) {
+                        listenFeedbackBtn.onclick = async () => {
+                            listenFeedbackBtn.disabled = true;
+                            listenFeedbackBtn.textContent = "Synthesizing Audio…";
+                            try {
+                                const ttsText = `Assessment feedback: ${res.feedback}. Recommended action: ${(res.areasForImprovement || [])[0] || "Review your project citations."}`;
+                                const ttsRes = await apiFetch("/api/sarvam/tts", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        text: ttsText,
+                                        targetLanguageCode: "en-IN",
+                                    }),
+                                });
+                                if (ttsRes.audioBase64) {
+                                    feedbackAudio.src = `data:audio/wav;base64,${ttsRes.audioBase64}`;
+                                    feedbackAudio.style.display = "block";
+                                    feedbackAudio.play();
+                                }
+                            } catch (e) {
+                                alert(`Feedback TTS error: ${e.message}`);
+                            } finally {
+                                listenFeedbackBtn.disabled = false;
+                                listenFeedbackBtn.textContent = "🔊 Listen to Feedback (Bulbul TTS)";
+                            }
+                        };
+                    }
+                } else {
+                    if (evalStatus) evalStatus.textContent = res.error || "Evaluation failed.";
+                }
+            } catch (evalErr) {
+                if (evalStatus) evalStatus.textContent = `Evaluation error: ${evalErr.message}`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "🚀 Evaluate with Sarvam AI";
+            }
+        });
+    }
+}
+

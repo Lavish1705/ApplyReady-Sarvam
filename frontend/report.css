@@ -233,6 +233,110 @@
     padding: 10px 18px;
 }
 
+/* Sarvam AI Report Bar */
+.report-sarvam-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-top: 3px solid #ff9933;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.sarvam-report-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sarvam-report-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sarvam-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
+[data-theme="dark"] .sarvam-pill-badge {
+    background: #431407;
+    color: #fdba74;
+    border-color: #9a3412;
+}
+
+.sarvam-select-sm {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.sarvam-btn-sm {
+    background: var(--brand-accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sarvam-btn-sm:hover {
+    opacity: 0.9;
+}
+
+.sarvam-btn-voice {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+}
+
+.sarvam-btn-ghost-sm {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.sarvam-audio-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 12px 14px;
+    border-radius: 8px;
+}
+
+.sarvam-audio-script {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0 0 8px 0;
+}
+
 /* Print styles */
 @page {
     margin: 15mm;

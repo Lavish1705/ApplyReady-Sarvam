@@ -554,3 +554,419 @@
         text-align: center;
     }
 }
+
+/* ==========================================================================
+   SARVAM AI INTEGRATION STYLES (Multilingual, Voice & Interview Coach)
+   ========================================================================== */
+
+.sarvam-suite-card {
+    border-top: 3px solid #ff9933;
+    background: linear-gradient(180deg, rgba(255, 153, 51, 0.04) 0%, var(--bg-card) 60px);
+    position: relative;
+    overflow: hidden;
+}
+
+.sarvam-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.sarvam-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sarvam-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+    letter-spacing: 0.3px;
+}
+
+[data-theme="dark"] .sarvam-pill-badge {
+    background: #431407;
+    color: #fdba74;
+    border-color: #9a3412;
+}
+
+.sarvam-voice-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sarvam-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.sarvam-lang-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sarvam-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.sarvam-select,
+.sarvam-select-sm {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.sarvam-select:focus,
+.sarvam-select-sm:focus {
+    border-color: var(--brand-accent);
+}
+
+.sarvam-btn {
+    background: var(--brand-accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 13px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.sarvam-btn:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.sarvam-btn:active {
+    transform: translateY(0);
+}
+
+.sarvam-btn-voice {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+}
+
+.sarvam-btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+}
+
+.sarvam-btn-ghost:hover {
+    color: var(--text-primary);
+    background: var(--bg-subtle);
+}
+
+.sarvam-status-indicator {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.sarvam-audio-box {
+    margin-top: 14px;
+    padding: 14px 16px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    animation: fadeIn 0.2s ease-in;
+}
+
+.sarvam-audio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sarvam-audio-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #ea580c;
+}
+
+.sarvam-audio-script {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    font-style: italic;
+}
+
+.sarvam-audio-player {
+    width: 100%;
+    height: 38px;
+}
+
+.sarvam-icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Sarvam Interview Coach Card */
+.sarvam-interview-card {
+    border-top: 3px solid #0284c7;
+}
+
+.sarvam-question-container {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.sarvam-q-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: var(--brand-accent);
+    margin-bottom: 6px;
+}
+
+.sarvam-question-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.sarvam-answer-zone {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+
+.sarvam-rec-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.sarvam-record-btn {
+    background: #ef4444;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.sarvam-record-btn.recording {
+    background: #b91c1c;
+    animation: micPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes micPulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.mic-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffffff;
+    display: inline-block;
+}
+
+.sarvam-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #ef4444;
+}
+
+.sarvam-textarea {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    box-sizing: border-box;
+    margin-top: 6px;
+}
+
+.sarvam-textarea:focus {
+    outline: none;
+    border-color: var(--brand-accent);
+}
+
+.sarvam-status-note {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Evaluation result */
+.sarvam-eval-result {
+    margin-top: 16px;
+    padding: 20px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.sarvam-eval-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.sarvam-eval-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.sarvam-score-pill {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--status-pass-bg);
+    color: var(--status-pass-text);
+    border: 1px solid var(--status-pass-border);
+}
+
+.sarvam-transcription-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    border-left: 3px solid var(--brand-accent);
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-top: 6px;
+    font-style: italic;
+}
+
+.sarvam-feedback-body {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+}
+
+.sarvam-strengths-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+@media (max-width: 600px) {
+    .sarvam-strengths-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sarvam-strength-col {
+    background: var(--bg-card);
+    padding: 12px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.sarvam-strength-col h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.sarvam-strength-col ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.sarvam-model-answer-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 10px;
+}
+
+[data-theme="dark"] .sarvam-model-answer-box {
+    background: #052e16;
+    border-color: #166534;
+}
+
+.sarvam-model-answer-box h4 {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    color: #166534;
+}
+
+[data-theme="dark"] .sarvam-model-answer-box h4 {
+    color: #86efac;
+}
+
+.sarvam-model-answer-box p {
+    margin: 0;
+    font-size: 13px;
+    color: #14532d;
+    line-height: 1.5;
+}
+
+[data-theme="dark"] .sarvam-model-answer-box p {
+    color: #bbf7d0;
+}
+

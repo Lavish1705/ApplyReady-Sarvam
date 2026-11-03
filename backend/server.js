@@ -307,7 +307,7 @@ async function connectMongoDB() {
         Application = mongoose.models.Application || mongoose.model("Application", applicationSchema);
         Assessment = mongoose.models.Assessment || mongoose.model("Assessment", assessmentSchema);
     } catch (err) {
-        console.error("MongoDB connection failed:", err.message);
+        console.warn(`ℹ️ MongoDB unavailable (${err.message}). Using seamless in-memory store mode.`);
         dbConnected = false;
     }
 }
@@ -1850,6 +1850,196 @@ app.post("/api/genai-explain", requireAuth, async (req, res) => {
     }
 });
 
+// ─── SARVAM AI INDIAN LANGUAGE & VOICE INTELLIGENCE ──────────────────────────
+const sarvamService = require("./sarvam_service");
+
+const audioUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit for voice clips
+    fileFilter: (req, file, cb) => {
+        if (
+            file.mimetype.startsWith("audio/") ||
+            file.mimetype === "video/webm" ||
+            file.mimetype === "application/octet-stream"
+        ) {
+            cb(null, true);
+        } else {
+            cb(new Error("Please upload a valid audio file (WAV, WebM, MP3)."));
+        }
+    },
+});
+
+app.get("/api/sarvam/status", (req, res) => {
+    return res.json(sarvamService.getStatus());
+});
+
+app.post("/api/sarvam/translate", async (req, res) => {
+    try {
+        const { input, targetLanguageCode, sourceLanguageCode, mode } = req.body;
+        if (!input || typeof input !== "string") {
+            return res.status(400).json({ error: "Input text is required." });
+        }
+        const result = await sarvamService.translateText({
+            input,
+            targetLanguageCode: targetLanguageCode || "hi-IN",
+            sourceLanguageCode: sourceLanguageCode || "en-IN",
+            mode: mode || "formal",
+        });
+        if (!result.success) {
+            return res.status(200).json({
+                success: false,
+                error: result.error,
+                translatedText: input, // Fallback to original
+                targetLanguageCode: targetLanguageCode || "hi-IN",
+            });
+        }
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post("/api/sarvam/tts", async (req, res) => {
+    try {
+        const { text, targetLanguageCode, speaker, pace } = req.body;
+        if (!text || typeof text !== "string") {
+            return res.status(400).json({ error: "Text is required for TTS." });
+        }
+        const result = await sarvamService.textToSpeech({
+            text,
+            targetLanguageCode: targetLanguageCode || "en-IN",
+            speaker: speaker || "ishita_enhi_companion",
+            pace: pace || 1.0,
+        });
+        if (!result.success) {
+            return res.status(200).json({
+                success: false,
+                error: result.error,
+                audioBase64: null,
+            });
+        }
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post("/api/sarvam/transcribe", audioUpload.single("audio"), async (req, res) => {
+    try {
+        if (!req.file || !req.file.buffer) {
+            return res.status(400).json({ error: "No audio file uploaded." });
+        }
+        const languageCode = req.body.languageCode || "unknown";
+        const result = await sarvamService.speechToText({
+            audioBuffer: req.file.buffer,
+            filename: req.file.originalname || "voice_input.wav",
+            mimeType: req.file.mimetype || "audio/wav",
+            languageCode,
+        });
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post("/api/sarvam/interview/question", async (req, res) => {
+    try {
+        const { opportunityName, domain, missingSkills, alignmentIndex, extractedEvidence } = req.body || {};
+        const result = await sarvamService.generateInterviewQuestion({
+            opportunityName,
+            domain,
+            missingSkills,
+            alignmentIndex,
+            extractedEvidence,
+        });
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post("/api/sarvam/interview/evaluate", async (req, res) => {
+    try {
+        const { question, answerText, opportunityName, targetRole, keySkills } = req.body || {};
+        if (!answerText) {
+            return res.status(400).json({ error: "Answer text is required." });
+        }
+        const result = await sarvamService.evaluateInterviewAnswer({
+            question,
+            answerText,
+            opportunityName,
+            targetRole,
+            keySkills,
+        });
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post("/api/sarvam/briefing", async (req, res) => {
+    try {
+        const { opportunityName, domain, status, alignmentIndex, keyIssues, languageCode, speaker } = req.body || {};
+        let script = "";
+        if (domain === "internship") {
+            const scoreText = typeof alignmentIndex === "number" ? `with a technical alignment score of ${alignmentIndex} percent.` : "";
+            script = `Hello! Here is your ApplyReady AI readiness briefing for ${opportunityName || "your role"} ${scoreText} `;
+            if (keyIssues && keyIssues.length > 0) {
+                script += `Priority areas to address before applying include: ${keyIssues.slice(0, 2).join(". ")}. `;
+            } else {
+                script += `Your submitted evidence shows strong alignment with the stated technical criteria. `;
+            }
+            script += `We recommend reviewing the truth preserving CV improvements and practicing mock interview questions. Best of luck!`;
+        } else {
+            script = `Hello! Here is your scholarship readiness summary for ${opportunityName || "your opportunity"}. `;
+            if (status === "eligible") {
+                script += `Your academic evidence satisfies the stated eligibility criteria. Ensure all supporting certificates are attached. `;
+            } else if (status === "needs_review") {
+                script += `Some academic fields require manual review or consistency verification between your marksheet and resume. `;
+            } else {
+                script += `Your application has unmet criteria based on the provided document evidence. `;
+            }
+            if (keyIssues && keyIssues.length > 0) {
+                script += `Main point to verify: ${keyIssues[0]}. `;
+            }
+            script += `Review your full readiness report for detailed next steps.`;
+        }
+
+        const ttsTarget = languageCode || "en-IN";
+        let spokenScript = script;
+
+        if (ttsTarget !== "en-IN" && sarvamService.isConfigured()) {
+            const transRes = await sarvamService.translateText({
+                input: script,
+                sourceLanguageCode: "en-IN",
+                targetLanguageCode: ttsTarget,
+            });
+            if (transRes.success && transRes.translatedText) {
+                spokenScript = transRes.translatedText;
+            }
+        }
+
+        const ttsRes = await sarvamService.textToSpeech({
+            text: spokenScript,
+            targetLanguageCode: ttsTarget,
+            speaker: speaker || "ishita_enhi_companion",
+        });
+
+        return res.json({
+            success: ttsRes.success,
+            script: spokenScript,
+            originalScript: script,
+            audioBase64: ttsRes.audioBase64,
+            contentType: ttsRes.contentType || "audio/wav",
+            model: ttsRes.model || "bulbul:v4-flash",
+            targetLanguageCode: ttsTarget,
+            error: ttsRes.error || null,
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // ─── ERROR HANDLERS ────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
@@ -1867,6 +2057,15 @@ app.use((err, req, res, next) => {
     next();
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, "127.0.0.1", () => {
     console.log(`ApplyReady AI server running at http://localhost:${PORT}`);
 });
+
+// Explicitly bind to IPv6 ::1 as well so 'localhost' on macOS reaches Node rather than AirTunes *:5000
+try {
+    const http = require("http");
+    const serverIPv6 = http.createServer(app);
+    serverIPv6.listen(PORT, "::1", () => {});
+    serverIPv6.on("error", () => {}); // Silently ignore if ::1 is unavailable or in use
+} catch (e) {}
+

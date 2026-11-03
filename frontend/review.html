@@ -39,6 +39,60 @@
             <p class="muted">Evidence-backed results from your submitted documents.</p>
         </div>
 
+        <!-- SARVAM AI: Multilingual & Voice Suite -->
+        <section class="review-card sarvam-suite-card" id="sarvamSuiteSection">
+            <div class="sarvam-card-header">
+                <div class="sarvam-title-wrap">
+                    <span class="sarvam-pill-badge">🇮🇳 Sarvam AI</span>
+                    <h2>Indian Multilingual &amp; Voice Suite</h2>
+                </div>
+                <div class="sarvam-voice-controls">
+                    <button type="button" id="sarvamVoiceBriefingBtn" class="sarvam-btn sarvam-btn-voice" title="Listen to an Indian voice briefing of this report">
+                        <span class="voice-icon">🎧</span> <span id="sarvamVoiceBtnText">Audio Briefing (Bulbul)</span>
+                    </button>
+                    <select id="sarvamVoiceLangSelect" class="sarvam-select-sm" title="Voice Language">
+                        <option value="en-IN">English (Indian)</option>
+                        <option value="hi-IN">हिन्दी (Hindi)</option>
+                    </select>
+                </div>
+            </div>
+            <p class="muted section-note" style="margin-bottom:12px;">
+                Experience state-of-the-art Indian language intelligence: translate readiness findings into 10 Indian languages or listen to natural speech synthesis.
+            </p>
+
+            <div class="sarvam-toolbar">
+                <div class="sarvam-lang-group">
+                    <label for="sarvamLangSelect" class="sarvam-label">Report Language:</label>
+                    <select id="sarvamLangSelect" class="sarvam-select">
+                        <option value="en-IN">English (Original)</option>
+                        <option value="hi-IN">हिन्दी (Hindi)</option>
+                        <option value="bn-IN">বাংলা (Bengali)</option>
+                        <option value="mr-IN">मराठी (Marathi)</option>
+                        <option value="te-IN">తెలుగు (Telugu)</option>
+                        <option value="ta-IN">தமிழ் (Tamil)</option>
+                        <option value="gu-IN">ગુજરાતી (Gujarati)</option>
+                        <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+                        <option value="ml-IN">മലയാളം (Malayalam)</option>
+                        <option value="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
+                        <option value="od-IN">ଓଡ଼ିଆ (Odia)</option>
+                    </select>
+                    <button type="button" id="sarvamTranslateBtn" class="sarvam-btn">🌐 Translate Insights</button>
+                    <button type="button" id="sarvamResetLangBtn" class="sarvam-btn sarvam-btn-ghost" style="display:none;">↩ Original</button>
+                </div>
+                <span id="sarvamStatusIndicator" class="sarvam-status-indicator"></span>
+            </div>
+
+            <!-- Audio Player Bar (revealed on audio generation) -->
+            <div id="sarvamAudioPlayerContainer" class="sarvam-audio-box" style="display:none;">
+                <div class="sarvam-audio-header">
+                    <span class="sarvam-audio-title">🎙️ Indian Voice Briefing · Sarvam Bulbul v4-flash</span>
+                    <button type="button" id="sarvamCloseAudioBtn" class="sarvam-icon-btn" aria-label="Close audio">✕</button>
+                </div>
+                <p id="sarvamAudioScript" class="sarvam-audio-script"></p>
+                <audio id="sarvamAudioElement" controls class="sarvam-audio-player"></audio>
+            </div>
+        </section>
+
         <!-- Opportunity Details -->
         <section class="review-card">
             <h2>Opportunity Details</h2>
@@ -177,6 +231,93 @@
             <div id="genaiContent" class="genai-box">
                 <div class="spinner-inline"></div>
                 <span>Loading AI suggestions…</span>
+            </div>
+        </section>
+
+        <!-- SARVAM AI: Voice Interview & Readiness Coach -->
+        <section class="review-card sarvam-interview-card" id="sarvamInterviewSection">
+            <div class="card-header-flex">
+                <h2>
+                    <span>🎙️ Sarvam AI Voice Interview Coach</span>
+                    <span class="sarvam-pill-badge" style="background:#fff3e0;color:#e65100;border-color:#ffe0b2;">Saaras ASR + 105B</span>
+                </h2>
+                <button type="button" id="sarvamGenerateQuestionBtn" class="primary-btn btn-sm" style="background:var(--brand-accent);">
+                    ⚡ Generate Role Question
+                </button>
+            </div>
+            <p class="muted section-note">
+                Practice answering realistic interview questions tailored to your unverified skills or academic criteria.
+                Speak in Hindi or Indian English — Sarvam Saaras transcribes your speech, and Sarvam-105b scores your response.
+            </p>
+
+            <div id="sarvamQuestionContainer" class="sarvam-question-container">
+                <div class="sarvam-q-badge">TARGET INTERVIEW QUESTION</div>
+                <p id="sarvamQuestionText" class="sarvam-question-text">
+                    Click "Generate Role Question" to formulate an interview question based on your CV evidence gaps.
+                </p>
+            </div>
+
+            <div class="sarvam-answer-zone">
+                <div class="sarvam-rec-controls">
+                    <button type="button" id="sarvamMicRecordBtn" class="sarvam-record-btn">
+                        <span class="mic-dot"></span>
+                        <span id="sarvamMicLabel">🎙️ Record Voice Answer (Saaras ASR)</span>
+                    </button>
+                    <span id="sarvamRecordTimer" class="sarvam-timer" style="display:none;">00:00</span>
+                    <audio id="sarvamRecordedAudioPreview" controls style="display:none; height:36px;"></audio>
+                </div>
+
+                <div class="sarvam-text-fallback">
+                    <label for="sarvamAnswerInput" class="sarvam-label" style="margin-top:10px;">
+                        Candidate Response (spoken voice will transcribe here, or you may type directly):
+                    </label>
+                    <textarea id="sarvamAnswerInput" class="sarvam-textarea" rows="3" placeholder="Speak your answer using the microphone above, or type your answer here..."></textarea>
+                </div>
+
+                <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <button type="button" id="sarvamSubmitAnswerBtn" class="primary-btn btn-sm">
+                        🚀 Evaluate with Sarvam AI
+                    </button>
+                    <span id="sarvamEvalStatus" class="sarvam-status-note"></span>
+                </div>
+            </div>
+
+            <!-- SARVAM EVALUATION RESULTS (revealed on evaluation) -->
+            <div id="sarvamEvaluationResultCard" class="sarvam-eval-result" style="display:none;">
+                <div class="sarvam-eval-header">
+                    <h3>Sarvam AI Interview Assessment</h3>
+                    <div class="sarvam-score-pill" id="sarvamScorePill">Score: —/100</div>
+                </div>
+
+                <div id="sarvamTranscriptionBlock" style="margin-bottom:12px; display:none;">
+                    <span class="tag-tech" style="background:#e0f2fe;color:#0369a1;border-color:#bae6fd;">Saaras v4 Transcription</span>
+                    <p id="sarvamTranscribedText" class="sarvam-transcription-text"></p>
+                </div>
+
+                <p id="sarvamFeedbackText" class="sarvam-feedback-body"></p>
+
+                <div class="sarvam-strengths-grid">
+                    <div class="sarvam-strength-col">
+                        <h4>✅ Noted Strengths</h4>
+                        <ul id="sarvamStrengthsList"></ul>
+                    </div>
+                    <div class="sarvam-strength-col">
+                        <h4>🎯 Recommendations</h4>
+                        <ul id="sarvamImprovementsList"></ul>
+                    </div>
+                </div>
+
+                <div id="sarvamModelAnswerBlock" class="sarvam-model-answer-box" style="display:none;">
+                    <h4>💡 Exemplary Model Answer (Sarvam-105b)</h4>
+                    <p id="sarvamModelAnswerText"></p>
+                </div>
+
+                <div style="margin-top:14px;">
+                    <button type="button" id="sarvamListenFeedbackBtn" class="secondary-btn btn-sm">
+                        🔊 Listen to Feedback (Bulbul TTS)
+                    </button>
+                    <audio id="sarvamFeedbackAudio" controls style="display:none; margin-top:8px;"></audio>
+                </div>
             </div>
         </section>
 

@@ -27,6 +27,38 @@
             <div id="reportMeta" class="report-meta"></div>
         </div>
 
+        <!-- SARVAM AI REPORT TOOLBAR (NO PRINT) -->
+        <div class="report-sarvam-bar no-print">
+            <div class="sarvam-report-left">
+                <span class="sarvam-pill-badge">🇮🇳 Sarvam AI</span>
+                <label for="rSarvamLangSelect" style="font-size:13px; font-weight:600;">Report Language:</label>
+                <select id="rSarvamLangSelect" class="sarvam-select-sm">
+                    <option value="en-IN">English (Original)</option>
+                    <option value="hi-IN">हिन्दी (Hindi)</option>
+                    <option value="bn-IN">বাংলা (Bengali)</option>
+                    <option value="mr-IN">मराठी (Marathi)</option>
+                    <option value="te-IN">తెలుగు (Telugu)</option>
+                    <option value="ta-IN">தமிழ் (Tamil)</option>
+                    <option value="gu-IN">ગુજરાતી (Gujarati)</option>
+                    <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+                    <option value="ml-IN">മലയാളം (Malayalam)</option>
+                    <option value="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
+                    <option value="od-IN">ଓଡ଼ିଆ (Odia)</option>
+                </select>
+                <button type="button" id="rSarvamTranslateBtn" class="sarvam-btn-sm">🌐 Translate Report</button>
+                <button type="button" id="rSarvamResetBtn" class="sarvam-btn-ghost-sm" style="display:none;">↩ Original</button>
+            </div>
+            <div class="sarvam-report-right">
+                <button type="button" id="rSarvamVoiceBtn" class="sarvam-btn-sm sarvam-btn-voice">
+                    🎧 Listen to Audio Summary (Bulbul)
+                </button>
+            </div>
+        </div>
+        <div id="rSarvamAudioBox" class="sarvam-audio-box no-print" style="display:none; margin-bottom:16px;">
+            <p id="rSarvamAudioScript" class="sarvam-audio-script"></p>
+            <audio id="rSarvamAudioElement" controls style="width:100%; height:36px;"></audio>
+        </div>
+
         <!-- EXECUTIVE SUMMARY -->
         <section class="report-section" id="rExecutiveSummarySection">
             <h2>Executive Summary</h2>

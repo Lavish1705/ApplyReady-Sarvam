@@ -111,6 +111,8 @@ function renderReport(app) {
         renderIssues(app, el("rIssues"));
         renderGenai(app, el("rGenai"), el("rGenaiSection"));
     }
+
+    initReportSarvam(app);
 }
 
 function statusLabel(status) {
@@ -762,3 +764,124 @@ function formatFieldName(name) {
     };
     return map[name] || (name || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
+
+// ── Sarvam AI Report Localization & Audio Briefing ───────────────────────────
+let reportOriginalCache = new Map();
+
+function initReportSarvam(app) {
+    const translateBtn = document.getElementById("rSarvamTranslateBtn");
+    const langSelect = document.getElementById("rSarvamLangSelect");
+    const resetBtn = document.getElementById("rSarvamResetBtn");
+    const voiceBtn = document.getElementById("rSarvamVoiceBtn");
+    const audioBox = document.getElementById("rSarvamAudioBox");
+    const audioEl = document.getElementById("rSarvamAudioElement");
+    const audioScript = document.getElementById("rSarvamAudioScript");
+
+    if (translateBtn && langSelect) {
+        translateBtn.addEventListener("click", async () => {
+            const targetLang = langSelect.value;
+            if (targetLang === "en-IN") {
+                resetReportTranslation();
+                return;
+            }
+
+            translateBtn.disabled = true;
+            translateBtn.textContent = "Translating…";
+
+            const elementsToTranslate = [];
+            const execSummary = document.getElementById("rExecutiveSummary");
+            if (execSummary) {
+                execSummary.querySelectorAll("p, li").forEach(el => elementsToTranslate.push(el));
+            }
+            const issues = document.getElementById("rIssues");
+            if (issues) {
+                issues.querySelectorAll("p").forEach(el => elementsToTranslate.push(el));
+            }
+            const genaiBox = document.getElementById("rGenai");
+            if (genaiBox) {
+                genaiBox.querySelectorAll("p").forEach(el => elementsToTranslate.push(el));
+            }
+
+            for (const el of elementsToTranslate) {
+                const text = el.textContent.trim();
+                if (!text || text.length < 2) continue;
+
+                if (!reportOriginalCache.has(el)) {
+                    reportOriginalCache.set(el, text);
+                }
+
+                try {
+                    const res = await apiFetch("/api/sarvam/translate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            input: text,
+                            targetLanguageCode: targetLang,
+                            sourceLanguageCode: "en-IN",
+                        }),
+                    }, 15000);
+
+                    if (res.success && res.translatedText) {
+                        el.textContent = res.translatedText;
+                    }
+                } catch (_) {}
+            }
+
+            translateBtn.disabled = false;
+            translateBtn.textContent = "🌐 Translate Report";
+            if (resetBtn) resetBtn.style.display = "inline-flex";
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+            resetReportTranslation();
+            if (langSelect) langSelect.value = "en-IN";
+        });
+    }
+
+    if (voiceBtn) {
+        voiceBtn.addEventListener("click", async () => {
+            voiceBtn.disabled = true;
+            voiceBtn.textContent = "⏳ Synthesizing Audio…";
+
+            try {
+                const targetLang = (langSelect && langSelect.value) || "en-IN";
+                const res = await apiFetch("/api/sarvam/briefing", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        opportunityName: app.opportunityName || "Application",
+                        domain: app.domain || "internship",
+                        status: app.eligibilityResult ? app.eligibilityResult.status : "ready",
+                        alignmentIndex: app.internshipAnalysis ? app.internshipAnalysis.alignment_index : null,
+                        languageCode: targetLang,
+                    }),
+                }, 25000);
+
+                if (res.audioBase64 && audioEl && audioBox) {
+                    audioBox.style.display = "block";
+                    if (audioScript) audioScript.textContent = `"${res.script}"`;
+                    audioEl.src = `data:${res.contentType || "audio/wav"};base64,${res.audioBase64}`;
+                    audioEl.play().catch(() => {});
+                } else {
+                    alert(res.error || "Audio summary unavailable. Verify SARVAM_API_KEY in backend/.env.");
+                }
+            } catch (err) {
+                alert(`Voice synthesis error: ${err.message}`);
+            } finally {
+                voiceBtn.disabled = false;
+                voiceBtn.textContent = "🎧 Listen to Audio Summary (Bulbul)";
+            }
+        });
+    }
+}
+
+function resetReportTranslation() {
+    reportOriginalCache.forEach((orig, el) => {
+        el.textContent = orig;
+    });
+    const resetBtn = document.getElementById("rSarvamResetBtn");
+    if (resetBtn) resetBtn.style.display = "none";
+}
+

@@ -10,7 +10,17 @@ import json
 import re
 import urllib.request
 import urllib.error
+import ssl
 from typing import Dict, List, Any, Optional
+
+try:
+    import certifi
+    SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+except Exception:
+    SSL_CONTEXT = ssl.create_default_context()
+    SSL_CONTEXT.check_hostname = False
+    SSL_CONTEXT.verify_mode = ssl.CERT_NONE
+
 
 MANIFEST_FILES = [
     "package.json",
@@ -89,7 +99,7 @@ def fetch_github_json(api_url: str, timeout: int = 8) -> Optional[Any]:
         headers=headers,
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as resp:
             if resp.status == 200:
                 raw_data = resp.read()
                 return json.loads(raw_data.decode("utf-8"))
@@ -158,7 +168,7 @@ def inspect_repository(github_url_or_slug: Optional[str], claimed_skills: Option
     langs = fetch_github_json(lang_api)
 
     is_cached_demo = False
-    if isinstance(langs, dict) and langs.get("_rate_limited"):
+    if (isinstance(langs, dict) and langs.get("_rate_limited")) or langs is None:
         if repo_key in DEMO_FALLBACK_REPOSITORIES:
             fallback = DEMO_FALLBACK_REPOSITORIES[repo_key]
             langs = fallback["languages"]
@@ -193,7 +203,7 @@ def inspect_repository(github_url_or_slug: Optional[str], claimed_skills: Option
         contents_api = f"https://api.github.com/repos/{owner}/{repo}/contents"
         root_contents = fetch_github_json(contents_api)
 
-        if isinstance(root_contents, dict) and root_contents.get("_rate_limited"):
+        if (isinstance(root_contents, dict) and root_contents.get("_rate_limited")) or root_contents is None:
             if repo_key in DEMO_FALLBACK_REPOSITORIES:
                 fallback = DEMO_FALLBACK_REPOSITORIES[repo_key]
                 for item in fallback["root_contents"]:
@@ -227,7 +237,7 @@ def inspect_repository(github_url_or_slug: Optional[str], claimed_skills: Option
                                 download_url,
                                 headers={"User-Agent": "ApplyReady-AI-ProofOfSkill/2.0"},
                             )
-                            with urllib.request.urlopen(req, timeout=5) as resp:
+                            with urllib.request.urlopen(req, timeout=5, context=SSL_CONTEXT) as resp:
                                 text = resp.read().decode("utf-8", errors="ignore")
                                 manifest_raw_texts[fname] = text
                         except Exception:
